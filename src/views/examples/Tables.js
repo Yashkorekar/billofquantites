@@ -281,10 +281,12 @@ function TableData3({ onPrevious }) {
         </tbody>
       </table>
 
-      <div className="summary">
-        <p>Total Measurement Sum: {totalMeasurementSum}</p>
-        <p>Total Amount Sum: {totalAmountSum}</p>
-      </div>
+      <tr className="table-summary">
+              <td colSpan="7" className="summary-label">Total measurement(sq.cm):</td>
+              <td>{totalMeasurementSum}</td>
+              <td colSpan="2" className="summary-label">Total amount(₹):</td>
+              <td>{totalAmountSum}</td>
+            </tr>
 
       <div className="button-container">
         <button onClick={onPrevious}>Previous</button>
