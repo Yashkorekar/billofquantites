@@ -40,7 +40,146 @@ import Header from "components/Headers/Header.js";
 import React, { useState, useEffect } from 'react';
 import './style.css';
 
-function Tables() {
+
+
+function ExcelUpload({ onNext }) {
+  const [file, setFile] = useState(null);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('http://localhost:8080/excel/upload', {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => {
+        if (response.ok) {
+          alert("File uploaded successfully");
+          onNext(); // Go to the next step
+        } else {
+          alert("Failed to upload file");
+        }
+      })
+      .catch(error => console.error('Error uploading file', error));
+  };
+
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files[0];
+    const allowedTypes = ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"];
+    const allowedExtensions = [".xlsx"];
+    const fileType = selectedFile.type;
+    const fileName = selectedFile.name;
+    const fileExtension = fileName.substring(fileName.lastIndexOf("."));
+
+    if (!allowedTypes.includes(fileType) || !allowedExtensions.includes(fileExtension)) {
+      alert("Please upload an Excel file (.xlsx)");
+      event.target.value = null;
+    } else {
+      setFile(selectedFile);
+    }
+  };
+
+  return (
+    <div className="step-container">
+      <h2>Step 1: Upload Excel File</h2>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Select a file:
+          <input type="file" onChange={handleFileChange} />
+        </label>
+        <button type="submit">Upload</button>
+      </form>
+    </div>
+  );
+}
+
+function ViewBoq({ onNext, onPrevious }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [tableData, setTableData] = useState([]);
+  const [itemDescriptions, setItemDescriptions] = useState([]);
+  const [selectedItemDescription, setSelectedItemDescription] = useState('');
+
+  useEffect(() => {
+    fetch('http://localhost:8080/boq/items')
+      .then(response => response.json())
+      .then(data => setItemDescriptions(data))
+      .catch(error => console.error('Error fetching item descriptions:', error));
+  }, []);
+
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+  };
+
+  const handleFileUpload = () => {
+    if (selectedFile) {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      fetch('http://localhost:8080/upload-excel', {
+        method: 'POST',
+        body: formData,
+      })
+        .then(response => response.json())
+        .then(data => {
+          setTableData(data);
+          onNext(); // Go to the next step
+        })
+        .catch(error => {
+          console.error('Error uploading file:', error);
+        });
+    }
+  };
+
+  const handleItemDescriptionChange = (event) => {
+    setSelectedItemDescription(event.target.value);
+  };
+
+  const columnOrder = ['item Id', 'item description', 'BOQ ID', 'product description', 'length', 'width', 'height', 'unit', 'rate'];
+
+  return (
+    <div className="step-container">
+      <h2>Step 2: View BOQ Data</h2>
+      <input type="file" onChange={handleFileChange} />
+      <button onClick={handleFileUpload}>Upload</button>
+      <div className="dropdown">
+        <select value={selectedItemDescription} onChange={handleItemDescriptionChange}>
+          <option value="">Select an item description</option>
+          {itemDescriptions.map((description, index) => (
+            <option key={index} value={description}>{description}</option>
+          ))}
+        </select>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            {columnOrder.map((column, index) => (
+              <th key={index}>{column}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {tableData.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {columnOrder.map((column, colIndex) => (
+                <td key={colIndex}>{typeof row[column] === 'number' ? parseInt(row[column], 10) : row[column]}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="button-container">
+        <button onClick={onPrevious}>Previous</button>
+        <button onClick={onNext}>Next</button>
+      </div>
+    </div>
+  );
+}
+
+function TableData3({ onPrevious }) {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [totalAmountSum, setTotalAmountSum] = useState(0);
@@ -66,16 +205,15 @@ function Tables() {
     if (selectedProductDescription) {
       filteredData = filteredData.filter(item => item.productDescription === selectedProductDescription);
     }
-  
+
     setFilteredData(filteredData);
-  
+
     const totalAmountSum = filteredData.reduce((total, item) => total + item.totalAmount, 0);
     setTotalAmountSum(totalAmountSum);
-  
+
     const totalMeasurementSum = filteredData.reduce((total, item) => total + item.totalMeasurement, 0);
     setTotalMeasurementSum(totalMeasurementSum);
   }, [data, selectedBoqId, selectedProductDescription]);
-  
 
   const handleBoqIdChange = (event) => {
     setSelectedBoqId(event.target.value);
@@ -89,8 +227,8 @@ function Tables() {
   const productDescriptions = Array.from(new Set(data.map(item => item.productDescription)));
 
   return (
-    <div className="table-container2">
-      <h1>Table Data</h1>
+    <div className="step-container">
+      <h2>Step 3: Table Data</h2>
       <div className="dropdown">
         <select value={selectedBoqId} onChange={handleBoqIdChange}>
           <option value="">All BoqIds</option>
@@ -102,56 +240,194 @@ function Tables() {
       <div className="dropdown">
         <select value={selectedProductDescription} onChange={handleProductDescriptionChange}>
           <option value="">All Product Descriptions</option>
-          {productDescriptions.map(description => (
-            <option key={description} value={description}>{description}</option>
+          {productDescriptions.map((description, index) => (
+            <option key={index} value={description}>{description}</option>
           ))}
         </select>
       </div>
+
       <table>
         <thead>
           <tr>
-            <th>Item ID</th>
-            <th>Boq Id</th>
+            <th>Item Id</th>
             <th>Item Description</th>
+            <th>BOQ ID</th>
             <th>Product Description</th>
             <th>Length</th>
-            <th>Height</th>
             <th>Width</th>
-            <th>Total Measurement</th>
+            <th>Height</th>
             <th>Unit</th>
             <th>Rate</th>
+            <th>Total Measurement</th>
             <th>Total Amount</th>
           </tr>
         </thead>
         <tbody>
-          {filteredData.map(item => (
-            <tr key={item.id}>
-              <td>{item.id}</td>
-              <td>{item.boqId}</td>
-              <td>{item.itemDescription}</td>
-              <td>{item.productDescription}</td>
-              <td>{item.length}</td>
-              <td>{item.height}</td>
-              <td>{item.width}</td>
-              <td>{item.totalMeasurement}</td>
-              <td>{item.unit}</td>
-              <td>{item.rate}</td>
-              <td>{item.totalAmount}</td>
+          {filteredData.map((row, index) => (
+            <tr key={index}>
+              <td>{row.itemId}</td>
+              <td>{row.itemDescription}</td>
+              <td>{row.boqId}</td>
+              <td>{row.productDescription}</td>
+              <td>{row.length}</td>
+              <td>{row.width}</td>
+              <td>{row.height}</td>
+              <td>{row.unit}</td>
+              <td>{row.rate}</td>
+              <td>{row.totalMeasurement}</td>
+              <td>{row.totalAmount}</td>
             </tr>
           ))}
-          <tr className="table-summary">
-            <td colSpan="7" className="summary-label">Total:</td>
-            <td>{totalMeasurementSum}</td>
-            <td colSpan="2" className="summary-label">Total:</td>
-            <td>{totalAmountSum}</td>
-          </tr>
         </tbody>
       </table>
+
+      <div className="summary">
+        <p>Total Measurement Sum: {totalMeasurementSum}</p>
+        <p>Total Amount Sum: {totalAmountSum}</p>
+      </div>
+
+      <div className="button-container">
+        <button onClick={onPrevious}>Previous</button>
+      </div>
     </div>
   );
 }
 
-export default Tables;
+function StepForm() {
+  const [currentStep, setCurrentStep] = useState(1);
+
+  const handleNext = () => {
+    setCurrentStep(currentStep + 1);
+  };
+
+  const handlePrevious = () => {
+    setCurrentStep(currentStep - 1);
+  };
+
+  return (
+    <div className="App">
+      {currentStep === 1 && <ExcelUpload onNext={handleNext} />}
+      {currentStep === 2 && <ViewBoq onNext={handleNext} onPrevious={handlePrevious} />}
+      {currentStep === 3 && <TableData3 onPrevious={handlePrevious} />}
+    </div>
+  );
+}
+
+export default StepForm;
+
+
+// function Tables() {
+//   const [data, setData] = useState([]);
+//   const [filteredData, setFilteredData] = useState([]);
+//   const [totalAmountSum, setTotalAmountSum] = useState(0);
+//   const [totalMeasurementSum, setTotalMeasurementSum] = useState(0);
+//   const [selectedBoqId, setSelectedBoqId] = useState('');
+//   const [selectedProductDescription, setSelectedProductDescription] = useState('');
+
+//   useEffect(() => {
+//     fetch('http://localhost:8080/boq/getall')
+//       .then(response => response.json())
+//       .then(data => {
+//         setData(data);
+//         setFilteredData(data);
+//       })
+//       .catch(error => console.error('Error fetching table data:', error));
+//   }, []);
+
+//   useEffect(() => {
+//     let filteredData = data;
+//     if (selectedBoqId) {
+//       filteredData = data.filter(item => item.boqId === parseInt(selectedBoqId));
+//     }
+//     if (selectedProductDescription) {
+//       filteredData = filteredData.filter(item => item.productDescription === selectedProductDescription);
+//     }
+  
+//     setFilteredData(filteredData);
+  
+//     const totalAmountSum = filteredData.reduce((total, item) => total + item.totalAmount, 0);
+//     setTotalAmountSum(totalAmountSum);
+  
+//     const totalMeasurementSum = filteredData.reduce((total, item) => total + item.totalMeasurement, 0);
+//     setTotalMeasurementSum(totalMeasurementSum);
+//   }, [data, selectedBoqId, selectedProductDescription]);
+  
+
+//   const handleBoqIdChange = (event) => {
+//     setSelectedBoqId(event.target.value);
+//   };
+
+//   const handleProductDescriptionChange = (event) => {
+//     setSelectedProductDescription(event.target.value);
+//   };
+
+//   const boqIds = Array.from(new Set(data.map(item => item.boqId)));
+//   const productDescriptions = Array.from(new Set(data.map(item => item.productDescription)));
+
+//   return (
+//     <div className="table-container2">
+//       <h1>Table Data</h1>
+//       <div className="dropdown">
+//         <select value={selectedBoqId} onChange={handleBoqIdChange}>
+//           <option value="">All BoqIds</option>
+//           {boqIds.map(boqId => (
+//             <option key={boqId} value={boqId}>{boqId}</option>
+//           ))}
+//         </select>
+//       </div>
+//       <div className="dropdown">
+//         <select value={selectedProductDescription} onChange={handleProductDescriptionChange}>
+//           <option value="">All Product Descriptions</option>
+//           {productDescriptions.map(description => (
+//             <option key={description} value={description}>{description}</option>
+//           ))}
+//         </select>
+//       </div>
+//       <table>
+//         <thead>
+//           <tr>
+//             <th>Item ID</th>
+//             <th>Boq Id</th>
+//             <th>Item Description</th>
+//             <th>Product Description</th>
+//             <th>Length</th>
+//             <th>Height</th>
+//             <th>Width</th>
+//             <th>Total Measurement</th>
+//             <th>Unit</th>
+//             <th>Rate</th>
+//             <th>Total Amount</th>
+//           </tr>
+//         </thead>
+//         <tbody>
+//           {filteredData.map(item => (
+//             <tr key={item.id}>
+//               <td>{item.id}</td>
+//               <td>{item.boqId}</td>
+//               <td>{item.itemDescription}</td>
+//               <td>{item.productDescription}</td>
+//               <td>{item.length}</td>
+//               <td>{item.height}</td>
+//               <td>{item.width}</td>
+//               <td>{item.totalMeasurement}</td>
+//               <td>{item.unit}</td>
+//               <td>{item.rate}</td>
+//               <td>{item.totalAmount}</td>
+//             </tr>
+//           ))}
+//           <tr className="table-summary">
+//             <td colSpan="7" className="summary-label">Total:</td>
+//             <td>{totalMeasurementSum}</td>
+//             <td colSpan="2" className="summary-label">Total:</td>
+//             <td>{totalAmountSum}</td>
+//           </tr>
+//         </tbody>
+//       </table>
+//     </div>
+//   );
+// }
+
+// export default Tables;
 
 
 // const Tables = () => {
