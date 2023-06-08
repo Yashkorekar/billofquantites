@@ -40,8 +40,6 @@ import Header from "components/Headers/Header.js";
 import React, { useState, useEffect } from 'react';
 import './style.css';
 
-
-
 function ExcelUpload({ onNext }) {
   const [file, setFile] = useState(null);
 
@@ -57,7 +55,7 @@ function ExcelUpload({ onNext }) {
       .then(response => {
         if (response.ok) {
           alert("File uploaded successfully");
-          onNext(); // Go to the next step
+          onNext();
         } else {
           alert("Failed to upload file");
         }
@@ -124,12 +122,15 @@ function ViewBoq({ onNext, onPrevious }) {
         .then(response => response.json())
         .then(data => {
           setTableData(data);
-          onNext(); // Go to the next step
         })
         .catch(error => {
           console.error('Error uploading file:', error);
         });
     }
+  };
+
+  const handleNext = () => {
+    onNext();
   };
 
   const handleItemDescriptionChange = (event) => {
@@ -143,14 +144,6 @@ function ViewBoq({ onNext, onPrevious }) {
       <h2>Step 2: View BOQ Data</h2>
       <input type="file" onChange={handleFileChange} />
       <button onClick={handleFileUpload}>Upload</button>
-      <div className="dropdown">
-        <select value={selectedItemDescription} onChange={handleItemDescriptionChange}>
-          <option value="">Select an item description</option>
-          {itemDescriptions.map((description, index) => (
-            <option key={index} value={description}>{description}</option>
-          ))}
-        </select>
-      </div>
 
       <table>
         <thead>
@@ -173,11 +166,14 @@ function ViewBoq({ onNext, onPrevious }) {
 
       <div className="button-container">
         <button onClick={onPrevious}>Previous</button>
-        <button onClick={onNext}>Next</button>
+        <button onClick={handleNext}>Next</button>
       </div>
     </div>
   );
 }
+
+
+  
 
 function TableData3({ onPrevious }) {
   const [data, setData] = useState([]);
@@ -263,28 +259,32 @@ function TableData3({ onPrevious }) {
           </tr>
         </thead>
         <tbody>
-          {filteredData.map((row, index) => (
-            <tr key={index}>
-              <td>{row.itemId}</td>
-              <td>{row.itemDescription}</td>
-              <td>{row.boqId}</td>
-              <td>{row.productDescription}</td>
-              <td>{row.length}</td>
-              <td>{row.width}</td>
-              <td>{row.height}</td>
-              <td>{row.unit}</td>
-              <td>{row.rate}</td>
-              <td>{row.totalMeasurement}</td>
-              <td>{row.totalAmount}</td>
-            </tr>
+          {filteredData.map(item => (
+              <tr key={item.id}>
+                <td>{item.id}</td>
+                <td>{item.boqId}</td>
+                <td>{item.itemDescription}</td>
+                <td>{item.productDescription}</td>
+                <td>{item.length}</td>
+                <td>{item.height}</td>
+                <td>{item.width}</td>
+                <td>{item.totalMeasurement}</td>
+                <td>{item.unit}</td>
+                <td>{item.rate}</td>
+                <td>{item.totalAmount}</td>
+              </tr>
           ))}
         </tbody>
       </table>
 
-      <tr className="table-summary">
-              <td colSpan="7" className="summary-label">Total measurement(sq.cm):</td>
+      {/* <div className="summary">
+        <p>Total Measurement Sum: {totalMeasurementSum}</p>
+        <p>Total Amount Sum: {totalAmountSum}</p>
+      </div> */}
+       <tr className="table-summary">
+              <td colSpan="7" className="summary-label">Total(cm2):</td>
               <td>{totalMeasurementSum}</td>
-              <td colSpan="2" className="summary-label">Total amount(₹):</td>
+              <td colSpan="2" className="summary-label">Total(₹):</td>
               <td>{totalAmountSum}</td>
             </tr>
 
@@ -316,6 +316,8 @@ function StepForm() {
 }
 
 export default StepForm;
+
+
 
 
 // function Tables() {
